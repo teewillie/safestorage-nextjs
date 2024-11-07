@@ -10,6 +10,9 @@ export default function Dashboard() {
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setStorageUsed('1GB');
+    setCpuUsage('20%');
+    setMemoryUsage('45%');
     // Implement upload logic
   };
 
