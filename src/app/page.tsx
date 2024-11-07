@@ -43,7 +43,9 @@ export default function Dashboard() {
         description: "Your file has been uploaded successfully",
       });
       
-      setStorageUsed('1GB'); // You might want to get the actual storage used from the API
+      setStorageUsed('1GB');
+      setCpuUsage('20%');
+      setMemoryUsage('45%');
       setSelectedFile(null);
       setFileName('No file chosen');
     } catch (error) {
