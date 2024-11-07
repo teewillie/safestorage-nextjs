@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -7,13 +8,51 @@ export default function Dashboard() {
   const [storageUsed, setStorageUsed] = useState('0GB');
   const [cpuUsage, setCpuUsage] = useState('20%');
   const [memoryUsage, setMemoryUsage] = useState('45%');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState('No file chosen');
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setStorageUsed('1GB');
-    setCpuUsage('20%');
-    setMemoryUsage('45%');
-    // Implement upload logic
+    
+    if (!selectedFile) {
+      toast({
+        title: "Error",
+        description: "Please select a file first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      console.log(formData);
+
+      // Replace with your API endpoint
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log("response", response);
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      toast({
+        title: "File uploaded",
+        description: "Your file has been uploaded successfully",
+      });
+      
+      setStorageUsed('1GB'); // You might want to get the actual storage used from the API
+      setSelectedFile(null);
+      setFileName('No file chosen');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRename = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -55,9 +94,19 @@ export default function Dashboard() {
               <div className="flex items-center space-x-4">
                 <label className="bg-black text-white px-4 py-2 rounded cursor-pointer hover:bg-gray-800">
                   <span>Choose File</span>
-                  <input type="file" name="file" required className="hidden" />
+                  <input 
+                    type="file" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        setFileName(file.name);
+                      }
+                    }}
+                    className="hidden" 
+                  />
                 </label>
-                <span className="text-gray-600">No file chosen</span>
+                <span className="text-gray-600">{fileName}</span>
               </div>
             </div>
             <button 
