@@ -3,6 +3,8 @@
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useState } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browserClient';
+import useSession from '@/lib/supabase/useBrowserSession';
 
 export default function Dashboard() {
   const [storageUsed, setStorageUsed] = useState('0GB');
@@ -10,6 +12,11 @@ export default function Dashboard() {
   const [memoryUsage, setMemoryUsage] = useState('45%');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('No file chosen');
+  const supabase = createSupabaseBrowserClient();
+  const session = useSession();
+
+  console.log("session", session);
+
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,7 +30,19 @@ export default function Dashboard() {
       return;
     }
 
+    
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please login first",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', selectedFile);
       console.log(formData);
@@ -79,7 +98,14 @@ export default function Dashboard() {
             <li><Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link></li>
             <li><Link href="/settings" className="hover:text-gray-300">Settings</Link></li>
             <li><Link href="/profile" className="hover:text-gray-300">Profile</Link></li>
-            <li><Link href="/logout" className="hover:text-gray-300">Logout</Link></li>
+
+            {
+              session?.user ? (
+                <li><Link href="/auth" className="hover:text-gray-300">Logout</Link></li>
+              ) : (
+                <li><Link href="/auth" className="hover:text-gray-300">Login</Link></li>
+              )
+            }
           </ul>
         </div>
       </nav>
