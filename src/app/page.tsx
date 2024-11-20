@@ -2,25 +2,76 @@
 
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browserClient';
 import useSession from '@/lib/supabase/useBrowserSession';
+import { useRouter } from 'next/navigation';
+import FileData from '@/components/FileData';
+import { User } from '@supabase/supabase-js';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatBytes } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+
+interface FileData {
+  id: string
+  file_name: string
+  file_type: string
+  file_size: number
+  file_url: string
+  uploaded_at: string
+}
+
 
 export default function Dashboard() {
-  const [storageUsed, setStorageUsed] = useState('0GB');
-  const [cpuUsage, setCpuUsage] = useState('20%');
-  const [memoryUsage, setMemoryUsage] = useState('45%');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<FileData[]>([]);
   const [fileName, setFileName] = useState('No file chosen');
+  const [shouldRefetch, setShouldRefetch] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const supabase = createSupabaseBrowserClient();
   const session = useSession();
+  const router = useRouter();
 
-  console.log("session", session);
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.refresh();
+      }
+    }
+    const fetchFiles = async () => {
+
+      if (!session?.user) return;
+
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('user_id', session?.user?.id)
+        .order('uploaded_at', { ascending: false });
+
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch files",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setFiles(data || []);
+      setShouldRefetch(false);
+    };
+
+    fetchFiles();
+    checkSession();
+  }, [session, shouldRefetch]);
 
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!selectedFile) {
       toast({
         title: "Error",
@@ -30,7 +81,7 @@ export default function Dashboard() {
       return;
     }
 
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -42,6 +93,8 @@ export default function Dashboard() {
         });
         return;
       }
+
+      setIsUploading(true);
 
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -61,18 +114,18 @@ export default function Dashboard() {
         title: "File uploaded",
         description: "Your file has been uploaded successfully",
       });
-      
-      setStorageUsed('1GB');
-      setCpuUsage('20%');
-      setMemoryUsage('45%');
+
+      setShouldRefetch(true);
       setSelectedFile(null);
       setFileName('No file chosen');
+      setIsUploading(false);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to upload file",
         variant: "destructive",
       });
+      setIsUploading(false);
     }
   };
 
@@ -81,9 +134,35 @@ export default function Dashboard() {
     // Implement rename logic
   };
 
-  const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Implement delete logic
+  const handleDelete = async (fileName: string) => {
+    try {
+      const response = await fetch(`/api/delete`, {
+        method: 'POST',
+        body: JSON.stringify({ fileName }),
+      });
+
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: "Failed to delete file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "File deleted",
+        description: "Your file has been deleted successfully",
+      });
+
+      setShouldRefetch(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -95,13 +174,10 @@ export default function Dashboard() {
             SafeStorage
           </Link>
           <ul className="hidden md:flex space-x-6">
-            <li><Link href="/dashboard" className="hover:text-gray-300">Dashboard</Link></li>
-            <li><Link href="/settings" className="hover:text-gray-300">Settings</Link></li>
-            <li><Link href="/profile" className="hover:text-gray-300">Profile</Link></li>
 
             {
               session?.user ? (
-                <li><Link href="/auth" className="hover:text-gray-300">Logout</Link></li>
+                <li><Link href="#" onClick={() => supabase.auth.signOut()} className="hover:text-gray-300">Logout</Link></li>
               ) : (
                 <li><Link href="/auth" className="hover:text-gray-300">Login</Link></li>
               )
@@ -122,8 +198,8 @@ export default function Dashboard() {
               <div className="flex items-center space-x-4">
                 <label className="bg-black text-white px-4 py-2 rounded cursor-pointer hover:bg-gray-800">
                   <span>Choose File</span>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -131,23 +207,24 @@ export default function Dashboard() {
                         setFileName(file.name);
                       }
                     }}
-                    className="hidden" 
+                    className="hidden"
                   />
                 </label>
                 <span className="text-gray-600">{fileName}</span>
               </div>
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+              disabled={!selectedFile || isUploading}
             >
-              Upload
+              {isUploading ? "Uploading..." : "Upload"}
             </button>
           </form>
         </section>
 
         {/* File Management Section */}
-        <section className="mb-8">
+        {/* <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">File Management</h2>
           <ul className="space-y-4">
             <li className="border p-4 rounded-lg shadow">
@@ -155,40 +232,40 @@ export default function Dashboard() {
                 <span className="font-medium">example-file.txt</span>
                 <div className="flex items-center space-x-2">
                   <form onSubmit={handleRename} className="flex items-center space-x-2">
-                    <input 
-                      type="hidden" 
-                      name="oldName" 
-                      value="example-file.txt" 
+                    <input
+                      type="hidden"
+                      name="oldName"
+                      value="example-file.txt"
                     />
-                    <input 
-                      type="text" 
-                      name="newName" 
-                      placeholder="New name" 
+                    <input
+                      type="text"
+                      name="newName"
+                      placeholder="New name"
                       required
                       className="border rounded px-2 py-1 text-sm"
                     />
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       className="bg-black text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
                     >
                       Rename
                     </button>
                   </form>
                   <form onSubmit={handleDelete} className="inline">
-                    <input 
-                      type="hidden" 
-                      name="filename" 
-                      value="example-file.txt" 
+                    <input
+                      type="hidden"
+                      name="filename"
+                      value="example-file.txt"
                     />
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
                     >
                       Delete
                     </button>
                   </form>
-                  <Link 
-                    href="/share/example-file.txt" 
+                  <Link
+                    href="/share/example-file.txt"
                     className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                     target="_blank"
                   >
@@ -198,15 +275,57 @@ export default function Dashboard() {
               </div>
             </li>
           </ul>
-        </section>
+        </section> */}
 
         {/* System Information */}
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">System Information</h2>
           <div className="space-y-2">
-            <p>Total Storage Used: <span className="font-medium">{storageUsed}</span> of 5GB</p>
-            <p>CPU Usage: <span className="font-medium">{cpuUsage}</span></p>
-            <p>Memory: <span className="font-medium">{memoryUsage}</span></p>
+            {session?.user ? <>
+              <section className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">File Management</h2>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>File Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Uploaded</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {files.map((file) => (
+                        <TableRow key={file.id}>
+                          <TableCell className="font-medium">{file.file_name}</TableCell>
+                          <TableCell>{file.file_type}</TableCell>
+                          <TableCell>{formatBytes(file.file_size)}</TableCell>
+                          <TableCell>{formatDate(file.uploaded_at)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => window.open(file.file_url, '_blank')}
+                                className="bg-black text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
+                              >
+                                Download
+                              </button>
+                              <button
+                                onClick={() => handleDelete(file.file_name)}
+                                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </section>
+            </> : <p>Please login to see your files</p>}
+
+
           </div>
         </section>
       </main>
