@@ -6,7 +6,26 @@ const nextConfig: NextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  /* config options here */
+  webpack: (config) => {
+    delete config.resolve.alias.pdfjs;
+    return config;
+  },
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-dialog']
+  },
+  // Add CORS headers for document preview
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

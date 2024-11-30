@@ -19,6 +19,8 @@ export async function POST(request: Request) {
 
     const { fileName, newFileName } = await request.json();
 
+    console.log(fileName, newFileName);
+
     if (!fileName || !newFileName) {
       return NextResponse.json(
         { error: 'File names not provided' },
@@ -26,13 +28,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Move (rename) the file in storage
+    console.log('Moving file from:', fileName, 'to:', newFileName);
     const { error: storageError } = await supabase.storage
       .from('files')
-      .move("files/"+fileName,"files/"+ newFileName);
+      .move(fileName, newFileName);
 
     if (storageError) {
-      console.error('Storage rename error:', storageError);
+      console.error('Storage rename error:', storageError, 'Attempted paths:', { from: fileName, to: newFileName });
       return NextResponse.json(
         { error: storageError.message },
         { status: 500 }

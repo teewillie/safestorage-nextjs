@@ -7,7 +7,6 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browserClient';
 import useSession from '@/lib/supabase/useBrowserSession';
 import { useRouter } from 'next/navigation';
 import FileData from '@/components/FileData';
-import { User } from '@supabase/supabase-js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatBytes } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { PreviewModal } from "@/components/PreviewModal";
 
 interface FileData {
   id: string
@@ -43,6 +43,8 @@ export default function Dashboard() {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -132,6 +134,7 @@ export default function Dashboard() {
       setFileName('No file chosen');
       setIsUploading(false);
     } catch (error) {
+      console.log(error);
       toast({
         title: "Error",
         description: "Failed to upload file",
@@ -149,6 +152,7 @@ export default function Dashboard() {
 
   const handleRename = async (fileName: string) => {
     setIsDialogOpen(false);
+    console.log(fileName, newFileName);
 
     try {
       const response = await fetch(`/api/rename`, {
@@ -170,6 +174,7 @@ export default function Dashboard() {
 
       setShouldRefetch(true);
     } catch (error) {
+      console.log(error);
       toast({
         title: "Error",
         description: "Failed to rename file",
@@ -201,6 +206,7 @@ export default function Dashboard() {
 
       setShouldRefetch(true);
     } catch (error) {
+      console.log(error);
       toast({
         title: "Error",
         description: "Failed to delete file",
@@ -208,7 +214,12 @@ export default function Dashboard() {
       });
     }
   };
-  
+
+  const handlePreview = (fileUrl: string, fileName: string) => {
+    console.log(fileUrl, fileName);
+    setPreviewFile({ url: fileUrl, name: fileName });
+    setIsPreviewOpen(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -268,60 +279,6 @@ export default function Dashboard() {
           </form>
         </section>
 
-        {/* File Management Section */}
-        {/* <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">File Management</h2>
-          <ul className="space-y-4">
-            <li className="border p-4 rounded-lg shadow">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <span className="font-medium">example-file.txt</span>
-                <div className="flex items-center space-x-2">
-                  <form onSubmit={handleRename} className="flex items-center space-x-2">
-                    <input
-                      type="hidden"
-                      name="oldName"
-                      value="example-file.txt"
-                    />
-                    <input
-                      type="text"
-                      name="newName"
-                      placeholder="New name"
-                      required
-                      className="border rounded px-2 py-1 text-sm"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-black text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
-                    >
-                      Rename
-                    </button>
-                  </form>
-                  <form onSubmit={handleDelete} className="inline">
-                    <input
-                      type="hidden"
-                      name="filename"
-                      value="example-file.txt"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                  <Link
-                    href="/share/example-file.txt"
-                    className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                    target="_blank"
-                  >
-                    Share
-                  </Link>
-                </div>
-              </div>
-            </li>
-          </ul>
-        </section> */}
-
         {/* System Information */}
         <section className="mb-8">
           <div className="space-y-2">
@@ -353,6 +310,12 @@ export default function Dashboard() {
                                 className="bg-black text-white px-3 py-1 rounded text-sm hover:bg-gray-800"
                               >
                                 Download
+                              </button>
+                              <button
+                                onClick={() => handlePreview(file.file_url, file.file_name)}
+                                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                              >
+                                Preview
                               </button>
                               <button
                                 onClick={() => handleDelete(file.file_name)}
@@ -432,6 +395,15 @@ export default function Dashboard() {
           </div>
         </div>
       </footer>
+
+      {previewFile && (
+        <PreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          fileUrl={previewFile.url}
+          fileName={previewFile.name}
+        />
+      )}
     </div>
   );
 }
