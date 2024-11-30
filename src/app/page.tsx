@@ -11,6 +11,15 @@ import { User } from '@supabase/supabase-js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatBytes } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 interface FileData {
   id: string
@@ -26,11 +35,14 @@ export default function Dashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
   const [fileName, setFileName] = useState('No file chosen');
+  const [newFileName, setNewFileName] = useState("")
   const [shouldRefetch, setShouldRefetch] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const supabase = createSupabaseBrowserClient();
   const session = useSession();
   const router = useRouter();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   useEffect(() => {
     const checkSession = async () => {
@@ -129,9 +141,41 @@ export default function Dashboard() {
     }
   };
 
-  const handleRename = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Implement rename logic
+  const openModal = async (fileName: string) => {
+    setSelectedFileName(fileName);
+    setNewFileName(fileName);
+    setIsDialogOpen(true);
+  }
+
+  const handleRename = async (fileName: string) => {
+    setIsDialogOpen(false);
+
+    try {
+      const response = await fetch(`/api/rename`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName, newFileName }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to rename file');
+      }
+
+      toast({
+        title: "File renamed",
+        description: "Your file has been renamed successfully",
+      });
+
+      setShouldRefetch(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to rename file",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (fileName: string) => {
@@ -164,6 +208,7 @@ export default function Dashboard() {
       });
     }
   };
+  
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -315,6 +360,38 @@ export default function Dashboard() {
                               >
                                 Delete
                               </button>
+                              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                                <DialogTrigger asChild>
+                                  <button
+                                    onClick={() => openModal(file.file_name)}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-grey-700"
+                                  >
+                                    Rename
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Rename File</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                      <Input
+                                        value={newFileName}
+                                        onChange={(e) => setNewFileName(e.target.value)}
+                                        placeholder="Enter new file name"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-3">
+                                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                                      Cancel
+                                    </Button>
+                                    <Button onClick={() => handleRename(selectedFileName)}>
+                                      Save Changes
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             </div>
                           </TableCell>
                         </TableRow>
