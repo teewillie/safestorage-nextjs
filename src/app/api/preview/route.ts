@@ -37,7 +37,10 @@ export async function GET(request: Request) {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': 'inline',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
   } catch (error) {

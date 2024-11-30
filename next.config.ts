@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@radix-ui/react-dialog']
   },
+  images: {
+    remotePatterns: [
+      {
+        hostname: 'lnelahckmdnrrdlsjohp.supabase.co',
+        protocol: 'https',
+        port: '',
+      },
+    ],
+  },
   // Add CORS headers for document preview
   async headers() {
     return [
