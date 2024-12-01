@@ -216,7 +216,8 @@ export default function Dashboard() {
   };
 
   const handlePreview = (fileUrl: string, fileName: string) => {
-    console.log(fileUrl, fileName);
+    console.log("fileUrl", fileUrl);
+    console.log("fileName", fileName);
     setPreviewFile({ url: fileUrl, name: fileName });
     setIsPreviewOpen(true);
   };

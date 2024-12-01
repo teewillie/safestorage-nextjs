@@ -41,10 +41,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update the database record
+    // After successfully moving the file in storage, get the new public URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('files')
+      .getPublicUrl(newFileName);
+
+    // Update the database record with both new filename and URL
     const { error: dbError } = await supabase
       .from('files')
-      .update({ file_name: newFileName })
+      .update({ 
+        file_name: newFileName,
+        file_url: publicUrl
+      })
       .eq('file_name', fileName)
       .eq('user_id', user.id);
 
