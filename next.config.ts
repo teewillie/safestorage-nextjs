@@ -6,10 +6,6 @@ const nextConfig: NextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  webpack: (config) => {
-    delete config.resolve.alias.pdfjs;
-    return config;
-  },
   experimental: {
     optimizePackageImports: ['@radix-ui/react-dialog']
   },
